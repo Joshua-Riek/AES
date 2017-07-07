@@ -390,11 +390,13 @@ class AES(object):
         :return: Data as string or binary data (defined by output type)"""
         if self.iv is None: raise AttributeError("No Iv found!")
         if self.input is 'hex':
+            if type(data) is not list: data = data.split()
             blocks = [self.iv]; last = [self.iv] + data
             if not isInv:
                 [blocks.append(self.Cipher(expanded_key, self.xor(blocks[-1], x))) for x in data]
                 return blocks[1:]
-            elif isInv: return [self.xor(self.InvCipher(expanded_key, data[x]), last[x]) for x in range(len(data))]
+            elif isInv:
+                return ''.join([self.xor(self.InvCipher(expanded_key, data[x]), last[x]) for x in range(len(data))])
         elif self.input is 'data':
             if not isInv:
                 data = re.findall('.' * 32, binascii.hexlify(self.pad(data)).decode()); blocks = [self.iv]
