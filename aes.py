@@ -14,20 +14,20 @@ class AES(object):
     and block sizes.
 
     # Instructions for my AES implication
-    aes = AES(mode='ecb', input_type='hex')
+    aes = AES(mode='ecb')
             
-    # Test vector 128-bit key
-    key = '000102030405060708090a0b0c0d0e0f'
+    # 128-bit key
+    key = 0x000102030405060708090a0b0c0d0e0f
         
     # Encrypt data with your key
-    cyphertext = aes.encryption('00112233445566778899aabbccddeeff', key)
+    cyphertext = aes.encryption('Hello World!', key)
         
     # Decrypt data with the same key
     plaintext = aes.decryption(cyphertext, key) 
     """
-    def __init__(self, mode, input_type, iv=None):
+
+    def __init__(self, mode='ecb', iv=None):
         self.mode = mode
-        self.input = input_type
         self.iv = iv
         self.Nb = 0
         self.Nk = 0
@@ -91,46 +91,46 @@ class AES(object):
 
     @staticmethod
     def pad(data, block=16):
-        """ Padding method for data
+        """ Padding method for data.
 
         :param data: Data to pad
         :param int block: Block size
         :return: Padded data """
         if block < 2 or block > 255:
             raise ValueError("Block Size must be < 2 and > 255")
-
-        if len(data) is block: return data
+        if len(data) is block:
+            return data
         pads = block - (len(data) % block)
         return data + binascii.unhexlify(('%02x' % int(pads)).encode()) + b'\x00' * (pads - 1)
 
     @staticmethod
     def unpad(data):
-        """ Un-Padding for data
+        """ Un-Padding for data.
 
         :param data: Data to be un-padded
         :return: Data with removed padding """
         p = None
         for x in data[::-1]:
-            if x is 0:
+            if x == 0:
                 continue
-            elif x is not 0:
-                p = x; break
+            elif x != 0:
+                p = x
+                break
         data = data[::-1]
         data = data[p:]
         return data[::-1]
 
     @staticmethod
     def unblock(data, size=16):
-        """ Unblock binary data
+        """ Unblock binary data.
 
         :param bytes data: Binary data to split into blocks
         :param int size: Block size
         :return: Blocked binary data """
-        # Return 64-bit blocks from data
         return [data[x:x + size] for x in range(0, len(data), size)]
 
     @staticmethod
-    def RotWord(word):
+    def rot_word(word):
         """ Takes a word [a0, a1, a2, a3] as input and perform a
         cyclic permutation that returns the word [a1, a2, a3, a0].
 
@@ -139,7 +139,7 @@ class AES(object):
         return int(word[2:] + word[0:2], 16)
 
     @staticmethod
-    def StateMatrix(state):
+    def state_matrix(state):
         """ Formats a State Matrix str to a properly formatted list.
 
         :param str state: String State Matrix
@@ -147,13 +147,15 @@ class AES(object):
         new_state = []
         split = re.findall('.' * 2, state)
         for x in range(4):
-            new_state.append(split[0:4][x]); new_state.append(split[4:8][x])
-            new_state.append(split[8:12][x]); new_state.append(split[12:16][x])
+            new_state.append(split[0:4][x])
+            new_state.append(split[4:8][x])
+            new_state.append(split[8:12][x])
+            new_state.append(split[12:16][x])
         return new_state
 
     @staticmethod
-    def RevertStateMatrix(state):
-        """ Reverts State Matrix format as str
+    def revert_state_matrix(state):
+        """ Reverts State Matrix format as str.
 
         :param list state: Final State Matrix
         :return: Reverted State Matrix """
@@ -162,14 +164,15 @@ class AES(object):
 
     @staticmethod
     def galois(a, b):
-        """ Galois multiplication of 8 bit characters a and b
+        """ Galois multiplication of 8 bit characters a and b.
 
         :param a: State Matrix col or row
         :param b: Fixed number
         :return: Galois field GF(2^8) """
         p = 0
         for counter in range(8):
-            if b & 1: p ^= a
+            if b & 1:
+                p ^= a
             hi_bit_set = a & 0x80
             a <<= 1
             # keep a 8 bit
@@ -180,7 +183,7 @@ class AES(object):
         return p
 
     @staticmethod
-    def AddRoundKey(state, key):
+    def add_round_key(state, key):
         """ Round Key is added to the State using an XOR operation.
 
         :param list state: State Matrix
@@ -188,25 +191,27 @@ class AES(object):
         :return: Hex values of XOR operation """
         return ['%02x' % (int(state[x], 16) ^ int(key[x], 16)) for x in range(16)]
 
-    def ShiftRows(self, state, isInv):
+    def shift_rows(self, state, is_inv):
         """ Changes the State by cyclically shifting the last
         three rows of the State by different offsets.
 
         :param list state: State Matrix
-        :param isInv: Encrypt or Decrypt
+        :param is_inv: Encrypt or Decrypt
         :return: Shifted state by offsets [0, 1, 2, 3] """
         offset = 0
-        if isInv: state = re.findall('.' * 2, self.RevertStateMatrix(state))
+        if is_inv:
+            state = re.findall('.' * 2, self.revert_state_matrix(state))
         for x in range(0, 16, 4):
             state[x:x + 4] = state[x:x + 4][offset:] + state[x:x + 4][:offset]
-            if not isInv:
+            if not is_inv:
                 offset += 1
-            elif isInv:
+            elif is_inv:
                 offset -= 1
-        if isInv: return self.StateMatrix(''.join(state))
+        if is_inv:
+            return self.state_matrix(''.join(state))
         return state
 
-    def SubWord(self, byte):
+    def sub_word(self, byte):
         """ Key Expansion routine that takes a four-byte
         input word and applies an S-box substitution.
 
@@ -215,28 +220,33 @@ class AES(object):
         return ((self.sbox[(byte >> 24 & 0xff)] << 24) + (self.sbox[(byte >> 16 & 0xff)] << 16) +
                 (self.sbox[(byte >> 8 & 0xff)] << 8) + self.sbox[byte & 0xff])
 
-    def SubBytes(self, state, isInv):
+    def sub_bytes(self, state, is_inv):
         """  Transforms the State Matrix using a nonlinear byte S-box
         that operates on each of the State bytes independently.
 
         :param state: State matrix input
-        :param isInv: Encrypt or decrypt mode
+        :param is_inv: Encrypt or decrypt mode
         :returns: Byte substitution from the state matrix """
-        if not isInv: return ['%02x' % self.sbox[int(state[x], 16)] for x in range(16)]
-        elif isInv: return ['%02x' % self.rsbox[int(state[x], 16)] for x in range(16)]
+        if not is_inv:
+            return ['%02x' % self.sbox[int(state[x], 16)] for x in range(16)]
+        elif is_inv:
+            return ['%02x' % self.rsbox[int(state[x], 16)] for x in range(16)]
 
     # noinspection PyAssignmentToLoopOrWithParameter
-    def MixColumns(self, state, isInv):
+    def mix_columns(self, state, is_inv):
         """ Operates on the State column-by-column, treating each column as
         a four-term polynomial. The columns are considered as polynomials
         over GF(2^8) and multiplied modulo x^4 + 1 with a fixed polynomial a(x).
 
         :param state: State Matrix input
-        :param isInv: Encrypt or decrypt mode
+        :param is_inv: Encrypt or decrypt mode
         :return:
         """
-        if isInv: fixed = [14, 9, 13, 11]; state = self.StateMatrix(''.join(state))
-        else: fixed = [2, 1, 1, 3]
+        if is_inv:
+            fixed = [14, 9, 13, 11]
+            state = self.state_matrix(''.join(state))
+        else:
+            fixed = [2, 1, 1, 3]
         columns = [state[x:x + 4] for x in range(0, 16, 4)]
         row = [0, 3, 2, 1]
         col = 0
@@ -245,15 +255,15 @@ class AES(object):
             for _ in range(4):
                 # noinspection PyTypeChecker
                 output.append('%02x' % (
-                    self.galois(int(columns[row[0]][col], 16), fixed[0]) ^
-                    self.galois(int(columns[row[1]][col], 16), fixed[1]) ^
-                    self.galois(int(columns[row[2]][col], 16), fixed[2]) ^
-                    self.galois(int(columns[row[3]][col], 16), fixed[3])))
+                        self.galois(int(columns[row[0]][col], 16), fixed[0]) ^
+                        self.galois(int(columns[row[1]][col], 16), fixed[1]) ^
+                        self.galois(int(columns[row[2]][col], 16), fixed[2]) ^
+                        self.galois(int(columns[row[3]][col], 16), fixed[3])))
                 row = [row[-1]] + row[:-1]
             col += 1
         return output
 
-    def Cipher(self, expandedKey, data):
+    def cipher(self, expanded_key, data):
         """ At the start of the Cipher, the input is copied to the
         State Matrix. After an initial Round Key addition, the
         State Matrix is transformed by implementing a round function
@@ -261,36 +271,41 @@ class AES(object):
         round differing slightly from the first Nr -1 rounds. The final
         State Matrix is then copied as the output.
 
-        :param list expandedKey: The expanded key schedule
+        :param list expanded_key: The expanded key schedule
         :param str data: Hex string to encrypt
         :return: Encrypted data as a Hex string """
-        state = self.AddRoundKey(self.StateMatrix(data), expandedKey[0])
+        state = self.add_round_key(self.state_matrix(data), expanded_key[0])
         for r in range(self.Nr - 1):
-            state = self.SubBytes(state, False)
-            state = self.ShiftRows(state, False)
-            state = self.StateMatrix(''.join(self.MixColumns(state, False)))
-            state = self.AddRoundKey(state, expandedKey[r + 1])
+            state = self.sub_bytes(state, False)
+            state = self.shift_rows(state, False)
+            state = self.state_matrix(''.join(self.mix_columns(state, False)))
+            state = self.add_round_key(state, expanded_key[r + 1])
 
-        state = self.SubBytes(state, False)
-        state = self.ShiftRows(state, False)
-        state = self.AddRoundKey(state, expandedKey[self.Nr])
-        return self.RevertStateMatrix(state)
+        state = self.sub_bytes(state, False)
+        state = self.shift_rows(state, False)
+        state = self.add_round_key(state, expanded_key[self.Nr])
+        return self.revert_state_matrix(state)
 
-    def InvCipher(self, expandedKey, data):
-        state = self.AddRoundKey(re.findall('.' * 2, data), expandedKey[self.Nr])
+    def inv_cipher(self, expanded_key, data):
+        """ The inverse of the cipher method.
+
+        :param list expanded_key: The expanded key schedule
+        :param str data: Hex string to decrypt
+        :return: Decrypted data as a Hex string """
+        state = self.add_round_key(re.findall('.' * 2, data), expanded_key[self.Nr])
 
         for r in range(self.Nr - 1):
-            state = self.ShiftRows(state, True)
-            state = self.SubBytes(state, True)
-            state = self.AddRoundKey(state, expandedKey[-(r + 2)])
-            state = self.MixColumns(state, True)
+            state = self.shift_rows(state, True)
+            state = self.sub_bytes(state, True)
+            state = self.add_round_key(state, expanded_key[-(r + 2)])
+            state = self.mix_columns(state, True)
 
-        state = self.ShiftRows(state, True)
-        state = self.SubBytes(state, True)
-        state = self.AddRoundKey(state, expandedKey[0])
+        state = self.shift_rows(state, True)
+        state = self.sub_bytes(state, True)
+        state = self.add_round_key(state, expanded_key[0])
         return ''.join(state)
 
-    def ExpandKey(self, key):
+    def expand_key(self, key):
         """ Takes the Cipher Key and performs a Key Expansion routine to
         generate a key schedule thus generating a total of Nb (Nr + 1) words.
 
@@ -301,55 +316,50 @@ class AES(object):
         i = self.Nk
         while i < self.Nb * (self.Nr + 1):
             temp = w[i - 1]
-            if i % self.Nk is 0:
-                temp = '%08x' % (self.SubWord(self.RotWord(temp)) ^ (self.rcon[i // self.Nk] << 24))
-            elif self.Nk > 6 and i % self.Nk is 4:
-                temp = '%08x' % self.SubWord(int(temp, 16))
+            if i % self.Nk == 0:
+                temp = '%08x' % (self.sub_word(self.rot_word(temp)) ^ (self.rcon[i // self.Nk] << 24))
+            elif self.Nk > 6 and i % self.Nk == 4:
+                temp = '%08x' % self.sub_word(int(temp, 16))
             w.append('%08x' % (int(w[i - self.Nk], 16) ^ int(temp, 16)))
             i += 1
 
-        return [self.StateMatrix(''.join(w[x:x + 4])) for x in range(0, len(w), self.Nk)]
+        return [self.state_matrix(''.join(w[x:x + 4])) for x in range(0, len(w), self.Nk)]
 
-    def key_handler(self, key, isInv):
+    def key_handler(self, key, is_inv):
         """ Gets the key length and sets Nb, Nk, Nr accordingly.
 
-        :param str key: 128, 192, 256 bit Cipher Key
-        :param isInv: Encrypt or decrypt mode
+        :param str key: 128-bit cipher Key
+        :param is_inv: Encrypt or decrypt mode
         :return: Expanded Cipher Keys """
-        # 128-bit key
-        if len(key) is 32:
-            self.Nb = 4; self.Nk = 4; self.Nr = 10
-        # 192-bit key
-        elif len(key) is 48:
-            self.Nb = 4; self.Nk = 6; self.Nr = 12
-        # 256-bit key
-        elif len(key) is 64:
-            self.Nb = 4; self.Nk = 8; self.Nr = 14
-        # Raise error on invalid key size
-        else: raise AssertionError("%s Is an invalid Key!\nUse a 128-bit, 192-bit or 256-bit key!" % key)
-        # Return the expanded key
-        if not isInv: return self.ExpandKey(key)
-        # Return the inverse expanded key
-        if isInv: return [re.findall('.' * 2, self.RevertStateMatrix(x)) for x in self.ExpandKey(key)]
+        if len(key) == 32:
+            self.Nb = 4
+            self.Nk = 4
+            self.Nr = 10
+        else:
+            raise AssertionError("Please use a 128-bit key!")
+        if not is_inv:
+            return self.expand_key(key)
+        elif is_inv:
+            return [re.findall('.' * 2, self.revert_state_matrix(x)) for x in self.expand_key(key)]
 
-    def aes_main(self, data, key, isInv):
-        """ Handle encryption and decryption modes
+    def aes_main(self, data, key, is_inv):
+        """ Handle encryption and decryption modes.
 
         :param data: Data to be handled (type defined by input type)
         :param key: Cipher Key to be expanded
-        :param isInv: Encrypt or decrypt mode
+        :param is_inv: Encrypt or decrypt mode
         :return: Data as hex string or binary data (defined by output type) """
-        # Get the expanded key set
-        expanded_key = self.key_handler(key, isInv)
-        # Encrypt using ECB mode
-        if self.mode is 'ecb': return self.ecb(data, expanded_key, isInv)
-        # Encrypt using CBC mode
-        elif self.mode is 'cbc': return self.cbc(data, expanded_key, isInv)
-        # Raise error on invalid mode
-        else: raise AttributeError("\n\n\tSupported AES Modes of Operation are ['ecb', 'cbc']")
+        key = "%032x" % key
+        expanded_key = self.key_handler(key, is_inv)
+        if self.mode == 'ecb':
+            return self.ecb(data, expanded_key, is_inv)
+        elif self.mode == 'cbc':
+            return self.cbc(data, expanded_key, is_inv)
+        else:
+            raise AttributeError("Supported AES Modes of Operation are 'ecb' and 'cbc'")
 
     def encryption(self, data, key):
-        """ Main AES Encryption function
+        """ Main AES Encryption function.
 
         :param data: Input for encryption
         :param key: Encryption key
@@ -357,7 +367,7 @@ class AES(object):
         return self.aes_main(data, key, False)
 
     def decryption(self, data, key):
-        """ Main AES Decryption function
+        """ Main AES Decryption function.
 
         :param data: Input for decryption
         :param key: Decryption key
@@ -366,7 +376,7 @@ class AES(object):
 
     @staticmethod
     def xor(first, last):
-        """ Xor method for CBC usage    
+        """ Xor method for CBC usage.
     
         :param first: first encrypted block
         :param last: last encrypted block
@@ -375,7 +385,7 @@ class AES(object):
         last = re.findall('.' * 2, last)
         return ''.join('%02x' % (int(first[x], 16) ^ int(last[x], 16)) for x in range(16))
 
-    def cbc(self, data, expanded_key, isInv):
+    def cbc(self, data, expanded_key, is_inv):
         """ CBC mode:
         In CBC mode, each block of plaintext is XORed with the
         previous ciphertext block before being encrypted.
@@ -386,55 +396,63 @@ class AES(object):
 
         :param data: Data to be encrypted (type defined by input type)
         :param expanded_key: The AES expanded key set
-        :param isInv:
+        :param is_inv:
         :return: Data as string or binary data (defined by output type)"""
-        if self.iv is None: raise AttributeError("No Iv found!")
-        if self.input is 'hex':
-            if type(data) is not list: data = data.split()
-            blocks = [self.iv]; last = [self.iv] + data
-            if not isInv:
-                [blocks.append(self.Cipher(expanded_key, self.xor(blocks[-1], x))) for x in data]
-                return blocks[1:]
-            elif isInv:
-                return ''.join([self.xor(self.InvCipher(expanded_key, data[x]), last[x]) for x in range(len(data))])
-        elif self.input is 'data':
-            if not isInv:
-                data = re.findall('.' * 32, binascii.hexlify(self.pad(data)).decode()); blocks = [self.iv]
-                [blocks.append(self.Cipher(expanded_key, self.xor(blocks[-1], x))) for x in data]
+        if self.iv is None:
+            raise AttributeError("No IV found!")
+        elif isinstance(data, str):
+            data = bytes(data, 'utf-8')
+            if not is_inv:
+                data = re.findall('.' * 32, binascii.hexlify(self.pad(data)).decode())
+                blocks = ["%032x" % self.iv]
+                [blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], x))) for x in data]
+                return ''.join(x for x in blocks[1:])
+            elif is_inv:
+                data = re.findall('.' * 32, binascii.hexlify(
+                    (int(data, 16)).to_bytes(int(len(data) / 2), byteorder="big")).decode())
+                last = ["%032x" % self.iv] + data
+                return str(self.unpad(b''.join(binascii.unhexlify(x.encode()) for x in [self.xor(
+                    self.inv_cipher(expanded_key, data[x]), last[x]) for x in range(len(data))])).decode('utf-8'))
+        elif isinstance(data, bytes):
+            if not is_inv:
+                data = re.findall('.' * 32, binascii.hexlify(self.pad(data)).decode())
+                blocks = ["%032x" % self.iv]
+                [blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], x))) for x in data]
                 return b''.join(binascii.unhexlify(x.encode()) for x in blocks[1:])
-            elif isInv:
-                data = re.findall('.' * 32, binascii.hexlify(data).decode()); last = [self.iv] + data
+            elif is_inv:
+                data = re.findall('.' * 32, binascii.hexlify(data).decode())
+                last = ["%032x" % self.iv] + data
                 return self.unpad(b''.join(binascii.unhexlify(x.encode()) for x in [self.xor(
-                    self.InvCipher(expanded_key, data[x]), last[x]) for x in range(len(data))]))
+                    self.inv_cipher(expanded_key, data[x]), last[x]) for x in range(len(data))]))
+        else:
+            raise AttributeError("Data must be of type 'str' or 'bytes'.")
 
-        # Raise error on invalid input
-        else: raise AttributeError("\n\n\tSupported AES inputs are ['hex', 'data']")
-
-    def ecb(self, data, expanded_key, isInv):
+    def ecb(self, data, expanded_key, is_inv):
         """ ECB mode:
         The simplest of the encryption modes is the Electronic
         Codebook (ECB) mode. The message is divided into blocks,
         and each block is encrypted separately.
 
-        :param isInv: 
+        :param is_inv: 
         :param data: Data to be encrypted (type defined by input type)
         :param expanded_key: The AES expanded key set
         :return: Data as string or binary data (defined by output type)"""
-        # Encrypt hex string data
-        if self.input is 'hex':
-            if not isInv: return self.Cipher(expanded_key, data)
-            elif isInv: return self.InvCipher(expanded_key, data)
-        # Encrypt an text string
-        elif self.input is 'text':
-            if not isInv: return self.Cipher(expanded_key, ''.join('%02x' % x for x in self.pad(data.encode())))
-            elif isInv: return str(self.unpad(binascii.unhexlify(self.InvCipher(expanded_key, data).encode())))[2:-1]
-        # Encrypt a stream of binary data
-        elif self.input is 'data':
-            if not isInv: return b''.join(binascii.unhexlify(self.Cipher(
-                expanded_key, str(binascii.hexlify(x))[2:-1]).encode()) for x in self.unblock(data))
-            if isInv: return b''.join(binascii.unhexlify(self.InvCipher(
-                expanded_key, str(binascii.hexlify(x))[2:-1]).encode()) for x in self.unblock(data))
-        # Raise error on invalid input
-        else: raise AttributeError("\n\n\tSupported Input types are ['hex', 'text', 'data']")
-
-
+        if isinstance(data, str):
+            data = bytes(data, 'utf-8')
+            if not is_inv:
+                data = re.findall('.' * 32, binascii.hexlify(self.pad(data)).decode())
+                return ''.join(self.cipher(expanded_key, x) for x in data)
+            elif is_inv:
+                data = re.findall('.' * 32, binascii.hexlify(
+                    (int(data, 16)).to_bytes(int(len(data) / 2), byteorder="big")).decode())
+                return str(self.unpad(b''.join(binascii.unhexlify(
+                    self.inv_cipher(expanded_key, x).encode()) for x in data)).decode('utf-8'))
+        elif isinstance(data, bytes):
+            if not is_inv:
+                data = re.findall('.' * 32, binascii.hexlify(self.pad(data)).decode())
+                return b''.join(binascii.unhexlify(self.cipher(expanded_key, x).encode()) for x in data)
+            elif is_inv:
+                data = re.findall('.' * 32, binascii.hexlify(data).decode())
+                return self.unpad(b''.join(binascii.unhexlify(self.inv_cipher(expanded_key, x).encode()) for x in data))
+        else:
+            raise AttributeError("Data must be of type 'str' or 'bytes'.")
