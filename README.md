@@ -19,7 +19,7 @@ plaintext = aes.decryption(cyphertext, key)
 ## CBC Mode
 In CBC mode, each block of plaintext is XORed with the previous ciphertext block before being encrypted. This can be denoted as:
 
-Encryption:` Ci = Ek(Pi xor C(i-1)) and C0 = IV`
+Encryption: `Ci = Ek(Pi xor C(i-1)) and C0 = IV`
 
 Decryption: `Pi = Dk(Ci) xor C(i-1) and C0 = IV`
 
@@ -29,7 +29,7 @@ Decryption: `Pi = Dk(Ci) xor C(i-1) and C0 = IV`
 key = 0x000102030405060708090a0b0c0d0e0f
 iv = 0x000102030405060708090a0b0c0d0e0f
 
-aes = AES(mode='cbc', iv=iv)
-cyphertext = aes.encryption(b'Hello World!', key)
-plaintext = aes.decryption(cyphertext, key)
+aes = AES(mode='cbc')
+cyphertext = aes.encryption(b'Hello World!', key, iv)
+plaintext = aes.decryption(cyphertext, key, iv)
 ```
