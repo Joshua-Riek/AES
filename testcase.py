@@ -18,7 +18,7 @@ class TestAesEcb(unittest.TestCase):
 
     def test_random_data(self):
         key = random.randrange(0xffffffffffffffffffffffffffffffff)
-        data = os.urandom(64)
+        data = os.urandom(random.randrange(64))
 
         aes = AES(mode='ecb')
         cyphertext = aes.encrypt(data, key)
@@ -38,7 +38,7 @@ class TestAesEcb(unittest.TestCase):
 
     def test_random_str(self):
         key = random.randrange(0xffffffffffffffffffffffffffffffff)
-        data = ''.join(random.choice(string.ascii_letters) for _ in range(64))
+        data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
 
         aes = AES(mode='ecb')
         cyphertext = aes.encrypt(data, key)
@@ -62,7 +62,7 @@ class TestAesCbc(unittest.TestCase):
     def test_random_data(self):
         key = random.randrange(0xffffffffffffffffffffffffffffffff)
         iv = random.randrange(0xffffffffffffffffffffffffffffffff)
-        data = os.urandom(64)
+        data = os.urandom(random.randrange(64))
 
         aes = AES(mode='cbc')
         cyphertext = aes.encrypt(data, key, iv)
@@ -71,7 +71,7 @@ class TestAesCbc(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_str(self):
-        key = 0xffffffffffffffffffffffffffffffff
+        key = 0x000102030405060708090a0b0c0d0e0f
         iv = 0x000102030405060708090a0b0c0d0e0f
         data = 'Hello World!'
 
@@ -84,7 +84,7 @@ class TestAesCbc(unittest.TestCase):
     def test_random_str(self):
         key = random.randrange(0xffffffffffffffffffffffffffffffff)
         iv = random.randrange(0xffffffffffffffffffffffffffffffff)
-        data = ''.join(random.choice(string.ascii_letters) for _ in range(64))
+        data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
 
         aes = AES(mode='cbc')
         cyphertext = aes.encrypt(data, key, iv)
