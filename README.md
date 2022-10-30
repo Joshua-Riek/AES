@@ -11,13 +11,13 @@ The message is divided into blocks, and each block is encrypted separately.
 
 key = 0x000102030405060708090a0b0c0d0e0f
 
-aes = AES(mode='ecb')
-cyphertext = aes.encryption('Hello World!', key)
-plaintext = aes.decryption(cyphertext, key) 
+aes = AES(key)
+cyphertext = aes.encryption('Hello World!')
+plaintext = aes.decryption(cyphertext) 
 ```
 
 ## CBC Mode
-In CBC mode, each block of plaintext is XORed with the previous ciphertext block before being encrypted. This can be denoted as:
+In Cipher Block Chaining (CBC) mode, each block of plaintext is XORed with the previous ciphertext block before being encrypted. This can be denoted as:
 
 Encryption: `Ci = Ek(Pi xor C(i-1)) and C0 = IV`
 
@@ -29,7 +29,7 @@ Decryption: `Pi = Dk(Ci) xor C(i-1) and C0 = IV`
 key = 0x000102030405060708090a0b0c0d0e0f
 iv = 0x000102030405060708090a0b0c0d0e0f
 
-aes = AES(mode='cbc')
-cyphertext = aes.encryption(b'Hello World!', key, iv)
-plaintext = aes.decryption(cyphertext, key, iv)
+aes = AES(key, iv)
+cyphertext = aes.encryption(b'Hello World!')
+plaintext = aes.decryption(cyphertext)
 ```

@@ -10,9 +10,9 @@ class TestAesEcb(unittest.TestCase):
         key = 0x000102030405060708090a0b0c0d0e0f
         data = b'Hello World!'
 
-        aes = AES(mode='ecb')
-        cyphertext = aes.encrypt(data, key)
-        plaintext = aes.decrypt(cyphertext, key)
+        aes = AES(key)
+        cyphertext = aes.encrypt(data)
+        plaintext = aes.decrypt(cyphertext)
 
         self.assertEqual(data, plaintext)
 
@@ -20,9 +20,9 @@ class TestAesEcb(unittest.TestCase):
         key = random.randrange(0xffffffffffffffffffffffffffffffff)
         data = os.urandom(random.randrange(64))
 
-        aes = AES(mode='ecb')
-        cyphertext = aes.encrypt(data, key)
-        plaintext = aes.decrypt(cyphertext, key)
+        aes = AES(key)
+        cyphertext = aes.encrypt(data)
+        plaintext = aes.decrypt(cyphertext)
 
         self.assertEqual(data, plaintext)
 
@@ -30,9 +30,9 @@ class TestAesEcb(unittest.TestCase):
         key = 0x000102030405060708090a0b0c0d0e0f
         data = 'Hello World!'
 
-        aes = AES(mode='ecb')
-        cyphertext = aes.encrypt(data, key)
-        plaintext = aes.decrypt(cyphertext, key)
+        aes = AES(key)
+        cyphertext = aes.encrypt(data)
+        plaintext = aes.decrypt(cyphertext)
 
         self.assertEqual(data, plaintext)
 
@@ -40,9 +40,9 @@ class TestAesEcb(unittest.TestCase):
         key = random.randrange(0xffffffffffffffffffffffffffffffff)
         data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
 
-        aes = AES(mode='ecb')
-        cyphertext = aes.encrypt(data, key)
-        plaintext = aes.decrypt(cyphertext, key)
+        aes = AES(key)
+        cyphertext = aes.encrypt(data)
+        plaintext = aes.decrypt(cyphertext)
 
         self.assertEqual(data, plaintext)
 
@@ -53,9 +53,9 @@ class TestAesCbc(unittest.TestCase):
         iv = 0x000102030405060708090a0b0c0d0e0f
         data = b'Hello World!'
 
-        aes = AES(mode='cbc')
-        cyphertext = aes.encrypt(data, key, iv)
-        plaintext = aes.decrypt(cyphertext, key, iv)
+        aes = AES(key, iv)
+        cyphertext = aes.encrypt(data)
+        plaintext = aes.decrypt(cyphertext)
 
         self.assertEqual(data, plaintext)
 
@@ -64,9 +64,9 @@ class TestAesCbc(unittest.TestCase):
         iv = random.randrange(0xffffffffffffffffffffffffffffffff)
         data = os.urandom(random.randrange(64))
 
-        aes = AES(mode='cbc')
-        cyphertext = aes.encrypt(data, key, iv)
-        plaintext = aes.decrypt(cyphertext, key, iv)
+        aes = AES(key, iv)
+        cyphertext = aes.encrypt(data)
+        plaintext = aes.decrypt(cyphertext)
 
         self.assertEqual(data, plaintext)
 
@@ -75,9 +75,9 @@ class TestAesCbc(unittest.TestCase):
         iv = 0x000102030405060708090a0b0c0d0e0f
         data = 'Hello World!'
 
-        aes = AES(mode='cbc')
-        cyphertext = aes.encrypt(data, key, iv)
-        plaintext = aes.decrypt(cyphertext, key, iv)
+        aes = AES(key, iv)
+        cyphertext = aes.encrypt(data)
+        plaintext = aes.decrypt(cyphertext)
 
         self.assertEqual(data, plaintext)
 
@@ -86,9 +86,9 @@ class TestAesCbc(unittest.TestCase):
         iv = random.randrange(0xffffffffffffffffffffffffffffffff)
         data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
 
-        aes = AES(mode='cbc')
-        cyphertext = aes.encrypt(data, key, iv)
-        plaintext = aes.decrypt(cyphertext, key, iv)
+        aes = AES(key, iv)
+        cyphertext = aes.encrypt(data)
+        plaintext = aes.decrypt(cyphertext)
 
         self.assertEqual(data, plaintext)
 
