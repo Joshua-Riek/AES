@@ -12,8 +12,8 @@ The message is divided into blocks, and each block is encrypted separately.
 key = 0x000102030405060708090a0b0c0d0e0f
 
 aes = AES(key)
-cyphertext = aes.encryption('Hello World!')
-plaintext = aes.decryption(cyphertext) 
+cyphertext = aes.encrypt('Hello World!')
+plaintext = aes.decrypt(cyphertext) 
 ```
 
 ## CBC Mode
@@ -30,6 +30,6 @@ key = 0x000102030405060708090a0b0c0d0e0f
 iv = 0x000102030405060708090a0b0c0d0e0f
 
 aes = AES(key, iv)
-cyphertext = aes.encryption(b'Hello World!')
-plaintext = aes.decryption(cyphertext)
+cyphertext = aes.encrypt(b'Hello World!')
+plaintext = aes.decrypt(cyphertext)
 ```
