@@ -14,26 +14,34 @@ class AES(object):
     and block sizes.
 
     # A simple example of encrypting a string with ECB mode!
-    key = 0x000102030405060708090a0b0c0d0e0f
+    key = 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
 
     aes = AES(key)
     cyphertext = aes.encrypt('Hello World!')
     plaintext = aes.decrypt(cyphertext)
 
     # A simple example of encrypting bytes with CBC mode!
-    key = 0x000102030405060708090a0b0c0d0e0f
+    key = 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
     iv = 0x000102030405060708090a0b0c0d0e0f
 
     aes = AES(key, iv)
     cyphertext = aes.encrypt(b'Hello World!')
     plaintext = aes.decrypt(cyphertext)
     """
+
     def __init__(self, key, iv=None):
-        self.key = key
         self.iv = iv
-        self.Nb = 0
-        self.Nk = 0
-        self.Nr = 0
+        if abs(key) <= 0xffffffffffffffffffffffffffffffff:
+            self.Nb, self.Nk, self.Nr = 4, 4, 10
+            self.key = "%032x" % key
+        elif abs(key) <= 0xffffffffffffffffffffffffffffffffffffffffffffffff:
+            self.Nb, self.Nk, self.Nr = 4, 6, 12
+            self.key = "%048x" % key
+        elif abs(key) <= 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff:
+            self.Nb, self.Nk, self.Nr = 4, 8, 14
+            self.key = "%064x" % key
+        else:
+            raise ValueError("Key can not be larger than 256-bits.")
 
         self.sbox = [
             0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
@@ -327,6 +335,7 @@ class AES(object):
         @return: Encrypted data as a Hex string
         """
         state = self.add_round_key(self.state_matrix(data), expanded_key[0])
+
         for r in range(self.Nr - 1):
             state = self.sub_bytes(state)
             state = self.shift_rows(state)
@@ -359,45 +368,15 @@ class AES(object):
         state = self.add_round_key(state, expanded_key[0])
         return ''.join(state)
 
-    def sub_keys(self, key):
-        """
-        Gets the key length and sets Nb, Nk, Nr accordingly.
-
-        @param key: 128-bit Cipher Key
-        @return: Expanded Cipher Keys
-        """
-        if abs(key) <= 0xffffffffffffffffffffffffffffffff:
-            self.Nb = 4
-            self.Nk = 4
-            self.Nr = 10
-        elif abs(key) > 0xffffffffffffffffffffffffffffffff:
-            raise ValueError("Key can not be larger than 128-bits.")
-        return self.expand_key(key)
-
-    def inv_sub_keys(self, key):
-        """
-        Gets the key length and sets Nb, Nk, Nr accordingly.
-
-        @param key: 128-bit Cipher Key
-        @return: Expanded Cipher Keys
-        """
-        if abs(key) <= 0xffffffffffffffffffffffffffffffff:
-            self.Nb = 4
-            self.Nk = 4
-            self.Nr = 10
-        elif abs(key) > 0xffffffffffffffffffffffffffffffff:
-            raise ValueError("Key can not be larger than 128-bits.")
-        return [re.findall('.' * 2, self.revert_state_matrix(x)) for x in self.expand_key(key)]
-
     def expand_key(self, key):
         """
         Takes the Cipher Key and performs a Key Expansion routine to
         generate a key schedule thus generating a total of Nb (Nr + 1) words.
 
-        @param key: 128-bit Cipher Key
+        @param key: Cipher Key
         @return: Expanded Cipher Keys
         """
-        w = ['%08x' % int(x, 16) for x in re.findall('.' * 8, "%032x" % key)]
+        w = ['%08x' % int(x, 16) for x in re.findall('.' * 8, key)]
 
         i = self.Nk
         while i < self.Nb * (self.Nr + 1):
@@ -409,7 +388,16 @@ class AES(object):
             w.append('%08x' % (int(w[i - self.Nk], 16) ^ int(temp, 16)))
             i += 1
 
-        return [self.state_matrix(''.join(w[x:x + 4])) for x in range(0, len(w), self.Nk)]
+        return [self.state_matrix(''.join(w[x:x + 4])) for x in range(0, len(w), 4)]
+
+    def inv_expand_key(self, key):
+        """
+        Preform the inverse of the key expansion method.
+
+        @param key: Cipher Key
+        @return: Expanded Cipher Keys
+        """
+        return [re.findall('.' * 2, self.revert_state_matrix(x)) for x in self.expand_key(key)]
 
     def encrypt(self, data):
         """
@@ -418,7 +406,7 @@ class AES(object):
         @param data: Data to be encrypted
         @return: Encrypted data
         """
-        expanded_key = self.sub_keys(self.key)
+        expanded_key = self.expand_key(self.key)
         if self.iv:
             return self.cbc_encrypt(data, expanded_key)
         else:
@@ -431,7 +419,7 @@ class AES(object):
         @param data: Data to be decrypted
         @return: Decrypted data
         """
-        expanded_key = self.inv_sub_keys(self.key)
+        expanded_key = self.inv_expand_key(self.key)
         if self.iv:
             return self.cbc_decrypt(data, expanded_key)
         else:
@@ -445,9 +433,7 @@ class AES(object):
         @param expanded_key: The AES expanded key set
         @return: Encrypted data
         """
-        if self.iv is None:
-            raise AttributeError("No IV found!")
-        elif isinstance(data, str):
+        if isinstance(data, str):
             blocks = ["%032x" % self.iv]
             [blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], x)))
                 for x in re.findall('.' * 32, binascii.hexlify(self.pad(bytes(data, 'utf-8'))).decode())]
@@ -468,9 +454,7 @@ class AES(object):
         @param expanded_key: The AES expanded key set
         @return: Decrypted data
         """
-        if self.iv is None:
-            raise AttributeError("No IV found!")
-        elif isinstance(data, str):
+        if isinstance(data, str):
             data = re.findall('.' * 32, binascii.hexlify(
                 (int(data, 16)).to_bytes(int(len(data) / 2), byteorder="big")).decode())
             return str(self.unpad(b''.join(binascii.unhexlify(x.encode()) for x in [self.xor(
