@@ -1,5 +1,4 @@
 import binascii
-import re
 
 
 class AES(object):
@@ -28,9 +27,13 @@ class AES(object):
     cyphertext = aes.encrypt(b'Hello World!')
     plaintext = aes.decrypt(cyphertext)
     """
-
     def __init__(self, key, iv=None):
         self.iv = iv
+        if iv and abs(iv) <= 0xffffffffffffffffffffffffffffffff:
+            self.iv = "%032x" % iv
+        elif iv and abs(iv) > 0xffffffffffffffffffffffffffffffff:
+            raise ValueError("IV can not be larger than 128-bits.")
+
         if abs(key) <= 0xffffffffffffffffffffffffffffffff:
             self.Nb, self.Nk, self.Nr = 4, 4, 10
             self.key = "%032x" % key
@@ -148,7 +151,7 @@ class AES(object):
         @param word: Row within State Matrix
         @return: Circular byte left shift
         """
-        return int(word[2:] + word[0:2], 16)
+        return ((word << 4) | (word >> (16 - 4))) & 0xffff
 
     @staticmethod
     def xor(first, last):
@@ -159,37 +162,34 @@ class AES(object):
         @param last: Last encrypted block
         @return: Xor output of two blocks
         """
-        first = re.findall('.' * 2, first)
-        last = re.findall('.' * 2, last)
-        return ''.join('%02x' % (int(first[x], 16) ^ int(last[x], 16)) for x in range(16))
+        return [first[x] ^ last[x] for x in range(16)]
 
     @staticmethod
     def state_matrix(state):
         """
-        Formats a State Matrix str to a properly formatted list.
+        Formats a State Matrix to a properly formatted list.
 
-        @param state: String State Matrix
+        @param state: State Matrix
         @return: Formatted State Matrix
         """
         new_state = []
-        split = re.findall('.' * 2, state)
         for x in range(4):
-            new_state.append(split[0:4][x])
-            new_state.append(split[4:8][x])
-            new_state.append(split[8:12][x])
-            new_state.append(split[12:16][x])
+            new_state += [state[0 + x], state[4 + x], state[8 + x], state[12 + x]]
         return new_state
 
     @staticmethod
-    def revert_state_matrix(state):
+    def inv_state_matrix(state):
         """
-        Reverts State Matrix format as str.
+        Preform the inverse of the State matrix method.
 
-        @param state: Final State Matrix
+        @param state: State Matrix
         @return: Reverted State Matrix
         """
         columns = [state[x:x + 4] for x in range(0, 16, 4)]
-        return ''.join(''.join([columns[0][x], columns[1][x], columns[2][x], columns[3][x]]) for x in range(4))
+        new_state = []
+        for x in range(4):
+            new_state += [columns[0][x], columns[1][x], columns[2][x], columns[3][x]]
+        return new_state
 
     @staticmethod
     def add_round_key(state, key):
@@ -200,7 +200,7 @@ class AES(object):
         @param key: Round Key
         @return: Hex values of XOR operation
         """
-        return ['%02x' % (int(state[x], 16) ^ int(key[x], 16)) for x in range(16)]
+        return [state[x] ^ key[x] for x in range(16)]
 
     def galois(self, a, b):
         """
@@ -247,11 +247,11 @@ class AES(object):
         @return: Shifted state by offsets [0, 1, 2, 3]
         """
         offset = 0
-        state = re.findall('.' * 2, self.revert_state_matrix(state))
+        state = self.inv_state_matrix(state)
         for x in range(0, 16, 4):
             state[x:x + 4] = state[x:x + 4][offset:] + state[x:x + 4][:offset]
             offset -= 1
-        return self.state_matrix(''.join(state))
+        return self.state_matrix(state)
 
     def sub_bytes(self, state):
         """
@@ -261,7 +261,7 @@ class AES(object):
         @param state: State matrix input
         @return: Byte substitution from the state matrix
         """
-        return ['%02x' % self.sbox[int(state[x], 16)] for x in range(16)]
+        return [self.sbox[state[x]] for x in range(16)]
 
     def inv_sub_bytes(self, state):
         """
@@ -270,7 +270,7 @@ class AES(object):
         @param state: State matrix input
         @return: Byte substitution from the state matrix
         """
-        return ['%02x' % self.rsbox[int(state[x], 16)] for x in range(16)]
+        return [self.rsbox[state[x]] for x in range(16)]
 
     def mix_columns(self, state):
         """
@@ -281,21 +281,20 @@ class AES(object):
         @param state: State Matrix input
         @return: Byte substitution from the state matrix
         """
-        fixed = [2, 1, 1, 3]
         columns = [state[x:x + 4] for x in range(0, 16, 4)]
         row = [0, 3, 2, 1]
         col = 0
         output = []
         for _ in range(4):
             for _ in range(4):
-                output.append('%02x' % (
-                        self.galois(int(columns[row[0]][col], 16), fixed[0]) ^
-                        self.galois(int(columns[row[1]][col], 16), fixed[1]) ^
-                        self.galois(int(columns[row[2]][col], 16), fixed[2]) ^
-                        self.galois(int(columns[row[3]][col], 16), fixed[3])))
+                output.append(
+                    self.galois(columns[row[0]][col], 2) ^
+                    self.galois(columns[row[1]][col], 1) ^
+                    self.galois(columns[row[2]][col], 1) ^
+                    self.galois(columns[row[3]][col], 3))
                 row = [row[-1]] + row[:-1]
             col += 1
-        return output
+        return self.state_matrix(output)
 
     def inv_mix_columns(self, state):
         """
@@ -304,19 +303,18 @@ class AES(object):
         @param state: State Matrix input
         @return: Byte substitution from the state matrix
         """
-        fixed = [14, 9, 13, 11]
-        state = self.state_matrix(''.join(state))
+        state = self.state_matrix(state)
         columns = [state[x:x + 4] for x in range(0, 16, 4)]
         row = [0, 3, 2, 1]
         col = 0
         output = []
         for _ in range(4):
             for _ in range(4):
-                output.append('%02x' % (
-                        self.galois(int(columns[row[0]][col], 16), fixed[0]) ^
-                        self.galois(int(columns[row[1]][col], 16), fixed[1]) ^
-                        self.galois(int(columns[row[2]][col], 16), fixed[2]) ^
-                        self.galois(int(columns[row[3]][col], 16), fixed[3])))
+                output.append(
+                    self.galois(columns[row[0]][col], 14) ^
+                    self.galois(columns[row[1]][col], 9) ^
+                    self.galois(columns[row[2]][col], 13) ^
+                    self.galois(columns[row[3]][col], 11))
                 row = [row[-1]] + row[:-1]
             col += 1
         return output
@@ -331,31 +329,31 @@ class AES(object):
         State Matrix is then copied as the output.
 
         @param expanded_key: The expanded key schedule
-        @param data: Hex string to encrypt
-        @return: Encrypted data as a Hex string
+        @param data: Data to encrypt
+        @return: Encrypted data
         """
         state = self.add_round_key(self.state_matrix(data), expanded_key[0])
 
         for r in range(self.Nr - 1):
             state = self.sub_bytes(state)
             state = self.shift_rows(state)
-            state = self.state_matrix(''.join(self.mix_columns(state)))
+            state = self.mix_columns(state)
             state = self.add_round_key(state, expanded_key[r + 1])
 
         state = self.sub_bytes(state)
         state = self.shift_rows(state)
         state = self.add_round_key(state, expanded_key[self.Nr])
-        return self.revert_state_matrix(state)
+        return self.inv_state_matrix(state)
 
     def inv_cipher(self, expanded_key, data):
         """
         Preform the inverse of the cipher method.
 
         @param expanded_key: The expanded key schedule
-        @param data: Hex string to encrypt
-        @return: Encrypted data as a Hex string
+        @param data: Data to decrypt
+        @return: Decrypted data
         """
-        state = self.add_round_key(re.findall('.' * 2, data), expanded_key[self.Nr])
+        state = self.add_round_key(data, expanded_key[self.Nr])
 
         for r in range(self.Nr - 1):
             state = self.inv_shift_rows(state)
@@ -366,7 +364,7 @@ class AES(object):
         state = self.inv_shift_rows(state)
         state = self.inv_sub_bytes(state)
         state = self.add_round_key(state, expanded_key[0])
-        return ''.join(state)
+        return state
 
     def expand_key(self, key):
         """
@@ -376,19 +374,25 @@ class AES(object):
         @param key: Cipher Key
         @return: Expanded Cipher Keys
         """
-        w = ['%08x' % int(x, 16) for x in re.findall('.' * 8, key)]
+        w = [int(key[y:y + 8], 16) for y in range(0, len(key), 8)]
 
         i = self.Nk
         while i < self.Nb * (self.Nr + 1):
             temp = w[i - 1]
             if i % self.Nk == 0:
-                temp = '%08x' % (self.sub_word(self.rot_word(temp)) ^ (self.rcon[i // self.Nk] << 24))
+                temp = self.sub_word(self.rot_word(temp)) ^ (self.rcon[i // self.Nk] << 24)
             elif self.Nk > 6 and i % self.Nk == 4:
-                temp = '%08x' % self.sub_word(int(temp, 16))
-            w.append('%08x' % (int(w[i - self.Nk], 16) ^ int(temp, 16)))
+                temp = self.sub_word(temp)
+            w.append(w[i - self.Nk] ^ temp)
             i += 1
 
-        return [self.state_matrix(''.join(w[x:x + 4])) for x in range(0, len(w), 4)]
+        new_state = []
+        for x in range(0, len(w), 4):
+            state = []
+            for y in range(4):
+                state += [w[x + y] >> 24 & 0xff, w[x + y] >> 16 & 0xff, w[x+y] >> 8 & 0xff, w[x+y] & 0xff]
+            new_state.append(self.state_matrix(state))
+        return new_state
 
     def inv_expand_key(self, key):
         """
@@ -397,7 +401,7 @@ class AES(object):
         @param key: Cipher Key
         @return: Expanded Cipher Keys
         """
-        return [re.findall('.' * 2, self.revert_state_matrix(x)) for x in self.expand_key(key)]
+        return [self.inv_state_matrix(x) for x in self.expand_key(key)]
 
     def encrypt(self, data):
         """
@@ -434,15 +438,17 @@ class AES(object):
         @return: Encrypted data
         """
         if isinstance(data, str):
-            blocks = ["%032x" % self.iv]
-            [blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], x)))
-                for x in re.findall('.' * 32, binascii.hexlify(self.pad(bytes(data, 'utf-8'))).decode())]
-            return ''.join(x for x in blocks[1:])
+            pad = self.pad(bytes(data, 'utf-8'))
+            blocks = [binascii.unhexlify(self.iv.encode())]
+            for x in [pad[y:y + 16] for y in range(0, len(pad), 16)]:
+                blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], x)))
+            return binascii.hexlify(bytes(y for x in blocks[1:] for y in x)).decode()
         elif isinstance(data, bytes):
-            blocks = ["%032x" % self.iv]
-            [blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], x)))
-                for x in re.findall('.' * 32, binascii.hexlify(self.pad(data)).decode())]
-            return b''.join(binascii.unhexlify(x.encode()) for x in blocks[1:])
+            pad = self.pad(data)
+            blocks = [binascii.unhexlify(self.iv.encode())]
+            for x in [pad[y:y + 16] for y in range(0, len(pad), 16)]:
+                blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], x)))
+            return bytes(y for x in blocks[1:] for y in x)
         else:
             raise AttributeError("Data must be of type 'str' or 'bytes'.")
 
@@ -455,16 +461,15 @@ class AES(object):
         @return: Decrypted data
         """
         if isinstance(data, str):
-            data = re.findall('.' * 32, binascii.hexlify(
-                (int(data, 16)).to_bytes(int(len(data) / 2), byteorder="big")).decode())
-            return str(self.unpad(b''.join(binascii.unhexlify(x.encode()) for x in [self.xor(
-                self.inv_cipher(expanded_key, data[x]), (["%032x" % self.iv] + data)[x])
-                    for x in range(len(data))])).decode('utf-8'))
+            data = [binascii.unhexlify(data[y:y + 32]) for y in range(0, len(data), 32)]
+            blocks = [binascii.unhexlify(self.iv.encode())] + data
+            return ''.join(chr(x) for x in self.unpad([y for x in [x for x in [self.xor(self.inv_cipher(
+                    expanded_key, data[x]), blocks[x]) for x in range(len(data))]] for y in x]))
         elif isinstance(data, bytes):
-            data = re.findall('.' * 32, binascii.hexlify(data).decode())
-            return self.unpad(b''.join(binascii.unhexlify(x.encode()) for x in [self.xor(
-                self.inv_cipher(expanded_key, data[x]), (["%032x" % self.iv] + data)[x])
-                    for x in range(len(data))]))
+            data = [data[y:y + 16] for y in range(0, len(data), 16)]
+            blocks = [binascii.unhexlify(self.iv.encode())] + data
+            return bytes(self.unpad([y for x in [x for x in [self.xor(self.inv_cipher(
+                    expanded_key, data[x]), blocks[x]) for x in range(len(data))]] for y in x]))
         else:
             raise AttributeError("Data must be of type 'str' or 'bytes'.")
 
@@ -477,11 +482,13 @@ class AES(object):
         @return: Encrypted data
         """
         if isinstance(data, str):
-            return ''.join(self.cipher(expanded_key, x) for x in re.findall(
-                '.' * 32, binascii.hexlify(self.pad(bytes(data, 'utf-8'))).decode()))
+            pad = self.pad(bytes(data, 'utf-8'))
+            return binascii.hexlify(bytes(y for x in [self.cipher(expanded_key, x) for x in [
+                    pad[y:y + 16] for y in range(0, len(pad), 16)]] for y in x)).decode()
         elif isinstance(data, bytes):
-            return b''.join(binascii.unhexlify(self.cipher(expanded_key, x).encode()) for x in re.findall(
-                '.' * 32, binascii.hexlify(self.pad(data)).decode()))
+            pad = self.pad(data)
+            return bytes(y for x in [self.cipher(expanded_key, x) for x in [
+                    pad[y:y + 16] for y in range(0, len(pad), 16)]] for y in x)
         else:
             raise AttributeError("Data must be of type 'str' or 'bytes'.")
 
@@ -494,13 +501,11 @@ class AES(object):
         @return: Decrypted data
         """
         if isinstance(data, str):
-            return str(self.unpad(b''.join(binascii.unhexlify(self.inv_cipher(
-                expanded_key, x).encode()) for x in re.findall(
-                    '.' * 32, binascii.hexlify(int(data, 16).to_bytes(
-                        int(len(data) / 2), byteorder="big")).decode()))).decode('utf-8'))
+            data = binascii.unhexlify(data)
+            return ''.join(chr(x) for x in self.unpad([y for x in [self.inv_cipher(expanded_key, x) for x in [
+                    data[y:y + 16] for y in range(0, len(data), 16)]] for y in x]))
         elif isinstance(data, bytes):
-            return self.unpad(b''.join(binascii.unhexlify(self.inv_cipher(
-                expanded_key, x).encode()) for x in re.findall(
-                    '.' * 32, binascii.hexlify(data).decode())))
+            return self.unpad(bytes(y for x in [self.inv_cipher(expanded_key, x) for x in [
+                    data[y:y + 16] for y in range(0, len(data), 16)]] for y in x))
         else:
             raise AttributeError("Data must be of type 'str' or 'bytes'.")
