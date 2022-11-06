@@ -438,19 +438,19 @@ class AES(object):
         @return: Encrypted data
         """
         if isinstance(data, str):
-            pad = self.pad(bytes(data, 'utf-8'))
+            data = self.pad(bytes(data, 'utf-8'))
             blocks = [binascii.unhexlify(self.iv.encode())]
-            for x in [pad[y:y + 16] for y in range(0, len(pad), 16)]:
-                blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], x)))
+            for x in range(0, len(data), 16):
+                blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], data[x:x + 16])))
             return binascii.hexlify(bytes(y for x in blocks[1:] for y in x)).decode()
         elif isinstance(data, bytes):
-            pad = self.pad(data)
+            data = self.pad(data)
             blocks = [binascii.unhexlify(self.iv.encode())]
-            for x in [pad[y:y + 16] for y in range(0, len(pad), 16)]:
-                blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], x)))
+            for x in range(0, len(data), 16):
+                blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], data[x:x + 16])))
             return bytes(y for x in blocks[1:] for y in x)
         else:
-            raise AttributeError("Data must be of type 'str' or 'bytes'.")
+            raise TypeError("Data must be of type 'str' or 'bytes'.")
 
     def cbc_decrypt(self, data, expanded_key):
         """
@@ -463,15 +463,15 @@ class AES(object):
         if isinstance(data, str):
             data = [binascii.unhexlify(data[y:y + 32]) for y in range(0, len(data), 32)]
             blocks = [binascii.unhexlify(self.iv.encode())] + data
-            return ''.join(chr(x) for x in self.unpad([y for x in [x for x in [self.xor(self.inv_cipher(
-                    expanded_key, data[x]), blocks[x]) for x in range(len(data))]] for y in x]))
+            decrypted_blocks = [self.xor(self.inv_cipher(expanded_key, data[x]), blocks[x]) for x in range(len(data))]
+            return ''.join(chr(x) for x in self.unpad([y for x in decrypted_blocks for y in x]))
         elif isinstance(data, bytes):
             data = [data[y:y + 16] for y in range(0, len(data), 16)]
             blocks = [binascii.unhexlify(self.iv.encode())] + data
-            return bytes(self.unpad([y for x in [x for x in [self.xor(self.inv_cipher(
-                    expanded_key, data[x]), blocks[x]) for x in range(len(data))]] for y in x]))
+            decrypted_blocks = [self.xor(self.inv_cipher(expanded_key, data[x]), blocks[x]) for x in range(len(data))]
+            return self.unpad(bytes(y for x in decrypted_blocks for y in x))
         else:
-            raise AttributeError("Data must be of type 'str' or 'bytes'.")
+            raise TypeError("Data must be of type 'str' or 'bytes'.")
 
     def ecb_encrypt(self, data, expanded_key):
         """
@@ -482,15 +482,15 @@ class AES(object):
         @return: Encrypted data
         """
         if isinstance(data, str):
-            pad = self.pad(bytes(data, 'utf-8'))
-            return binascii.hexlify(bytes(y for x in [self.cipher(expanded_key, x) for x in [
-                    pad[y:y + 16] for y in range(0, len(pad), 16)]] for y in x)).decode()
+            data = self.pad(bytes(data, 'utf-8'))
+            blocks = [self.cipher(expanded_key, data[x:x + 16]) for x in range(0, len(data), 16)]
+            return binascii.hexlify(bytes(y for x in blocks for y in x)).decode()
         elif isinstance(data, bytes):
-            pad = self.pad(data)
-            return bytes(y for x in [self.cipher(expanded_key, x) for x in [
-                    pad[y:y + 16] for y in range(0, len(pad), 16)]] for y in x)
+            data = self.pad(data)
+            blocks = [self.cipher(expanded_key, data[x:x + 16]) for x in range(0, len(data), 16)]
+            return bytes(y for x in blocks for y in x)
         else:
-            raise AttributeError("Data must be of type 'str' or 'bytes'.")
+            raise TypeError("Data must be of type 'str' or 'bytes'.")
 
     def ecb_decrypt(self, data, expanded_key):
         """
@@ -502,10 +502,10 @@ class AES(object):
         """
         if isinstance(data, str):
             data = binascii.unhexlify(data)
-            return ''.join(chr(x) for x in self.unpad([y for x in [self.inv_cipher(expanded_key, x) for x in [
-                    data[y:y + 16] for y in range(0, len(data), 16)]] for y in x]))
+            blocks = [self.inv_cipher(expanded_key, data[x:x + 16]) for x in range(0, len(data), 16)]
+            return ''.join(chr(x) for x in self.unpad([y for x in blocks for y in x]))
         elif isinstance(data, bytes):
-            return self.unpad(bytes(y for x in [self.inv_cipher(expanded_key, x) for x in [
-                    data[y:y + 16] for y in range(0, len(data), 16)]] for y in x))
+            blocks = [self.inv_cipher(expanded_key, data[x:x + 16]) for x in range(0, len(data), 16)]
+            return self.unpad(bytes(y for x in blocks for y in x))
         else:
-            raise AttributeError("Data must be of type 'str' or 'bytes'.")
+            raise TypeError("Data must be of type 'str' or 'bytes'.")
