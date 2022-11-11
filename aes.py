@@ -27,24 +27,50 @@ class AES(object):
     cyphertext = aes.encrypt(b'Hello World!')
     plaintext = aes.decrypt(cyphertext)
     """
-    def __init__(self, key, iv=None):
-        self.iv = iv
-        if iv and abs(iv) <= 0xffffffffffffffffffffffffffffffff:
-            self.iv = "%032x" % iv
-        elif iv and abs(iv) > 0xffffffffffffffffffffffffffffffff:
-            raise ValueError("IV can not be larger than 128-bits.")
 
-        if abs(key) <= 0xffffffffffffffffffffffffffffffff:
-            self.Nb, self.Nk, self.Nr = 4, 4, 10
-            self.key = "%032x" % key
-        elif abs(key) <= 0xffffffffffffffffffffffffffffffffffffffffffffffff:
-            self.Nb, self.Nk, self.Nr = 4, 6, 12
-            self.key = "%048x" % key
-        elif abs(key) <= 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff:
-            self.Nb, self.Nk, self.Nr = 4, 8, 14
-            self.key = "%064x" % key
+    def __init__(self, key, iv=None):
+        if isinstance(key, int):
+            if abs(key) <= 0xffffffffffffffffffffffffffffffff:
+                self.Nb, self.Nk, self.Nr, self.key = 4, 4, 10, "%032x" % key
+            elif abs(key) <= 0xffffffffffffffffffffffffffffffffffffffffffffffff:
+                self.Nb, self.Nk, self.Nr, self.key = 4, 6, 12, "%048x" % key
+            elif abs(key) <= 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff:
+                self.Nb, self.Nk, self.Nr, self.key = 4, 8, 14, "%064x" % key
+            else:
+                raise ValueError("Key can not be larger than 256-bits.")
+        elif isinstance(key, str):
+            if key == "":
+                self.Nb, self.Nk, self.Nr = 4, 4, 10
+                self.key = "%032x" % 0
+            elif len(key) <= 16:
+                self.Nb, self.Nk, self.Nr = 4, 4, 10
+                self.key = "%032x" % int(''.join("%02x" % i for i in bytes(key, 'utf-8')), 16)
+            elif len(key) <= 24:
+                self.Nb, self.Nk, self.Nr = 4, 6, 12
+                self.key = "%048x" % int(''.join("%02x" % i for i in bytes(key, 'utf-8')), 16)
+            elif len(key) <= 32:
+                self.Nb, self.Nk, self.Nr = 4, 8, 14
+                self.key = "%064x" % int(''.join("%02x" % i for i in bytes(key, 'utf-8')), 16)
+            else:
+                raise ValueError("Key can not be longer than 32 characters.")
         else:
-            raise ValueError("Key can not be larger than 256-bits.")
+            raise TypeError("Key must be of type 'str' or 'int'.")
+        if isinstance(iv, int):
+            if abs(iv) <= 0xffffffffffffffffffffffffffffffff:
+                self.iv = "%032x" % iv
+            else:
+                raise ValueError("IV can not be larger than 128-bits.")
+        elif isinstance(iv, str):
+            if iv == "":
+                self.iv = "%032x" % 0
+            elif len(iv) <= 16:
+                self.iv = "%032x" % int(''.join("%02x" % i for i in bytes(iv, 'utf-8')), 16)
+            else:
+                raise ValueError("IV can not be longer than 16 characters.")
+        elif iv is not None:
+            raise TypeError("IV must be of type 'str' or 'int'.")
+        else:
+            self.iv = iv
 
         self.sbox = [
             0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
