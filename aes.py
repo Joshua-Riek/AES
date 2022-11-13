@@ -1,8 +1,8 @@
-import binascii
+from binascii import hexlify, unhexlify
 
 
 class AES(object):
-    """ Started on 3/16/2017
+    """
     The Advanced Encryption Standard (AES), also known by its original
     name Rijndael, is a specification for the encryption of electronic
     data established by the U.S. National Institute of Standards and
@@ -308,18 +308,12 @@ class AES(object):
         @return: Byte substitution from the state matrix
         """
         columns = [state[x:x + 4] for x in range(0, 16, 4)]
-        row = [0, 3, 2, 1]
-        col = 0
         output = []
-        for _ in range(4):
-            for _ in range(4):
-                output.append(
-                    self.galois(columns[row[0]][col], 2) ^
-                    self.galois(columns[row[1]][col], 1) ^
-                    self.galois(columns[row[2]][col], 1) ^
-                    self.galois(columns[row[3]][col], 3))
-                row = [row[-1]] + row[:-1]
-            col += 1
+        for x in range(4):
+            output.append(self.galois(columns[0][x], 2) ^ self.galois(columns[3][x], 1) ^ self.galois(columns[2][x], 1) ^ self.galois(columns[1][x], 3))
+            output.append(self.galois(columns[1][x], 2) ^ self.galois(columns[0][x], 1) ^ self.galois(columns[3][x], 1) ^ self.galois(columns[2][x], 3))
+            output.append(self.galois(columns[2][x], 2) ^ self.galois(columns[1][x], 1) ^ self.galois(columns[0][x], 1) ^ self.galois(columns[3][x], 3))
+            output.append(self.galois(columns[3][x], 2) ^ self.galois(columns[2][x], 1) ^ self.galois(columns[1][x], 1) ^ self.galois(columns[0][x], 3))
         return self.state_matrix(output)
 
     def inv_mix_columns(self, state):
@@ -331,18 +325,12 @@ class AES(object):
         """
         state = self.state_matrix(state)
         columns = [state[x:x + 4] for x in range(0, 16, 4)]
-        row = [0, 3, 2, 1]
-        col = 0
         output = []
-        for _ in range(4):
-            for _ in range(4):
-                output.append(
-                    self.galois(columns[row[0]][col], 14) ^
-                    self.galois(columns[row[1]][col], 9) ^
-                    self.galois(columns[row[2]][col], 13) ^
-                    self.galois(columns[row[3]][col], 11))
-                row = [row[-1]] + row[:-1]
-            col += 1
+        for x in range(4):
+            output.append(self.galois(columns[0][x], 14) ^ self.galois(columns[3][x], 9) ^ self.galois(columns[2][x], 13) ^ self.galois(columns[1][x], 11))
+            output.append(self.galois(columns[1][x], 14) ^ self.galois(columns[0][x], 9) ^ self.galois(columns[3][x], 13) ^ self.galois(columns[2][x], 11))
+            output.append(self.galois(columns[2][x], 14) ^ self.galois(columns[1][x], 9) ^ self.galois(columns[0][x], 13) ^ self.galois(columns[3][x], 11))
+            output.append(self.galois(columns[3][x], 14) ^ self.galois(columns[2][x], 9) ^ self.galois(columns[1][x], 13) ^ self.galois(columns[0][x], 11))
         return output
 
     def cipher(self, expanded_key, data):
@@ -416,7 +404,7 @@ class AES(object):
         for x in range(0, len(w), 4):
             state = []
             for y in range(4):
-                state += [w[x + y] >> 24 & 0xff, w[x + y] >> 16 & 0xff, w[x+y] >> 8 & 0xff, w[x+y] & 0xff]
+                state += [w[x + y] >> 24 & 0xff, w[x + y] >> 16 & 0xff, w[x + y] >> 8 & 0xff, w[x + y] & 0xff]
             new_state.append(self.state_matrix(state))
         return new_state
 
@@ -465,13 +453,13 @@ class AES(object):
         """
         if isinstance(data, str):
             data = self.pad(bytes(data, 'utf-8'))
-            blocks = [binascii.unhexlify(self.iv.encode())]
+            blocks = [unhexlify(self.iv.encode())]
             for x in range(0, len(data), 16):
                 blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], data[x:x + 16])))
-            return binascii.hexlify(bytes(y for x in blocks[1:] for y in x)).decode()
+            return hexlify(bytes(y for x in blocks[1:] for y in x)).decode()
         elif isinstance(data, bytes):
             data = self.pad(data)
-            blocks = [binascii.unhexlify(self.iv.encode())]
+            blocks = [unhexlify(self.iv.encode())]
             for x in range(0, len(data), 16):
                 blocks.append(self.cipher(expanded_key, self.xor(blocks[-1], data[x:x + 16])))
             return bytes(y for x in blocks[1:] for y in x)
@@ -487,13 +475,13 @@ class AES(object):
         @return: Decrypted data
         """
         if isinstance(data, str):
-            data = [binascii.unhexlify(data[y:y + 32]) for y in range(0, len(data), 32)]
-            blocks = [binascii.unhexlify(self.iv.encode())] + data
+            data = [unhexlify(data[y:y + 32]) for y in range(0, len(data), 32)]
+            blocks = [unhexlify(self.iv.encode())] + data
             decrypted_blocks = [self.xor(self.inv_cipher(expanded_key, data[x]), blocks[x]) for x in range(len(data))]
             return ''.join(chr(x) for x in self.unpad([y for x in decrypted_blocks for y in x]))
         elif isinstance(data, bytes):
             data = [data[y:y + 16] for y in range(0, len(data), 16)]
-            blocks = [binascii.unhexlify(self.iv.encode())] + data
+            blocks = [unhexlify(self.iv.encode())] + data
             decrypted_blocks = [self.xor(self.inv_cipher(expanded_key, data[x]), blocks[x]) for x in range(len(data))]
             return self.unpad(bytes(y for x in decrypted_blocks for y in x))
         else:
@@ -510,7 +498,7 @@ class AES(object):
         if isinstance(data, str):
             data = self.pad(bytes(data, 'utf-8'))
             blocks = [self.cipher(expanded_key, data[x:x + 16]) for x in range(0, len(data), 16)]
-            return binascii.hexlify(bytes(y for x in blocks for y in x)).decode()
+            return hexlify(bytes(y for x in blocks for y in x)).decode()
         elif isinstance(data, bytes):
             data = self.pad(data)
             blocks = [self.cipher(expanded_key, data[x:x + 16]) for x in range(0, len(data), 16)]
@@ -527,7 +515,7 @@ class AES(object):
         @return: Decrypted data
         """
         if isinstance(data, str):
-            data = binascii.unhexlify(data)
+            data = unhexlify(data)
             blocks = [self.inv_cipher(expanded_key, data[x:x + 16]) for x in range(0, len(data), 16)]
             return ''.join(chr(x) for x in self.unpad([y for x in blocks for y in x]))
         elif isinstance(data, bytes):

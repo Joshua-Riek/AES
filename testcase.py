@@ -1,11 +1,11 @@
-import unittest
-import random
-import string
-import os
+from unittest import TestCase, TestProgram
+from random import randrange, choice
+from string import ascii_letters
+from os import urandom
 from aes import AES
 
 
-class TestAesEcb(unittest.TestCase):
+class TestAesEcb(TestCase):
     def test_str_128_bit(self):
         key = 0x000102030405060708090a0b0c0d0e0f
         data = "Hello World!"
@@ -67,8 +67,8 @@ class TestAesEcb(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_str_random_128_bit(self):
-        key = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(16)))
-        data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
+        key = ''.join(choice(ascii_letters) for _ in range(randrange(16)))
+        data = ''.join(choice(ascii_letters) for _ in range(randrange(64)))
 
         aes = AES(key)
         cyphertext = aes.encrypt(data)
@@ -77,8 +77,8 @@ class TestAesEcb(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_str_random_192_bit(self):
-        key = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(17, 24)))
-        data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
+        key = ''.join(choice(ascii_letters) for _ in range(randrange(17, 24)))
+        data = ''.join(choice(ascii_letters) for _ in range(randrange(64)))
 
         aes = AES(key)
         cyphertext = aes.encrypt(data)
@@ -87,8 +87,8 @@ class TestAesEcb(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_str_random_256_bit(self):
-        key = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(25, 32)))
-        data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
+        key = ''.join(choice(ascii_letters) for _ in range(randrange(25, 32)))
+        data = ''.join(choice(ascii_letters) for _ in range(randrange(64)))
 
         aes = AES(key)
         cyphertext = aes.encrypt(data)
@@ -97,8 +97,8 @@ class TestAesEcb(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_hex_str_random_128_bit(self):
-        key = random.randrange(0xffffffffffffffffffffffffffffffff)
-        data = os.urandom(random.randrange(64))
+        key = randrange(0xffffffffffffffffffffffffffffffff)
+        data = urandom(randrange(64))
 
         aes = AES(key)
         cyphertext = aes.encrypt(data)
@@ -107,9 +107,9 @@ class TestAesEcb(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_hex_str_random_192_bit(self):
-        key = random.randrange(0xfffffffffffffffffffffffffffffffff,
+        key = randrange(0xfffffffffffffffffffffffffffffffff,
                                0xffffffffffffffffffffffffffffffffffffffffffffffff)
-        data = os.urandom(random.randrange(64))
+        data = urandom(randrange(64))
 
         aes = AES(key)
         cyphertext = aes.encrypt(data)
@@ -118,9 +118,9 @@ class TestAesEcb(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_hex_str_random_256_bit(self):
-        key = random.randrange(0xfffffffffffffffffffffffffffffffffffffffffffffffff,
+        key = randrange(0xfffffffffffffffffffffffffffffffffffffffffffffffff,
                                0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
-        data = os.urandom(random.randrange(64))
+        data = urandom(randrange(64))
 
         aes = AES(key)
         cyphertext = aes.encrypt(data)
@@ -129,7 +129,7 @@ class TestAesEcb(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
 
-class TestAesCbc(unittest.TestCase):
+class TestAesCbc(TestCase):
     def test_str_128_bit(self):
         key = 0x000102030405060708090a0b0c0d0e0f
         iv = 0x000102030405060708090a0b0c0d0e0f
@@ -197,9 +197,9 @@ class TestAesCbc(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_str_random_128_bit(self):
-        key = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(16)))
-        iv = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(16)))
-        data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
+        key = ''.join(choice(ascii_letters) for _ in range(randrange(16)))
+        iv = ''.join(choice(ascii_letters) for _ in range(randrange(16)))
+        data = ''.join(choice(ascii_letters) for _ in range(randrange(64)))
 
         aes = AES(key, iv)
         cyphertext = aes.encrypt(data)
@@ -208,9 +208,9 @@ class TestAesCbc(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_str_random_192_bit(self):
-        key = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(17, 24)))
-        iv = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(16)))
-        data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
+        key = ''.join(choice(ascii_letters) for _ in range(randrange(17, 24)))
+        iv = ''.join(choice(ascii_letters) for _ in range(randrange(16)))
+        data = ''.join(choice(ascii_letters) for _ in range(randrange(64)))
 
         aes = AES(key, iv)
         cyphertext = aes.encrypt(data)
@@ -219,9 +219,9 @@ class TestAesCbc(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_str_random_256_bit(self):
-        key = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(25, 32)))
-        iv = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(16)))
-        data = ''.join(random.choice(string.ascii_letters) for _ in range(random.randrange(64)))
+        key = ''.join(choice(ascii_letters) for _ in range(randrange(25, 32)))
+        iv = ''.join(choice(ascii_letters) for _ in range(randrange(16)))
+        data = ''.join(choice(ascii_letters) for _ in range(randrange(64)))
 
         aes = AES(key, iv)
         cyphertext = aes.encrypt(data)
@@ -230,9 +230,9 @@ class TestAesCbc(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_hex_str_random_128_bit(self):
-        key = random.randrange(0xffffffffffffffffffffffffffffffff)
-        iv = random.randrange(0xffffffffffffffffffffffffffffffff)
-        data = os.urandom(random.randrange(64))
+        key = randrange(0xffffffffffffffffffffffffffffffff)
+        iv = randrange(0xffffffffffffffffffffffffffffffff)
+        data = urandom(randrange(64))
 
         aes = AES(key, iv)
         cyphertext = aes.encrypt(data)
@@ -241,10 +241,10 @@ class TestAesCbc(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_hex_str_random_192_bit(self):
-        key = random.randrange(0xfffffffffffffffffffffffffffffffff,
+        key = randrange(0xfffffffffffffffffffffffffffffffff,
                                0xffffffffffffffffffffffffffffffffffffffffffffffff)
-        iv = random.randrange(0xffffffffffffffffffffffffffffffff)
-        data = os.urandom(random.randrange(64))
+        iv = randrange(0xffffffffffffffffffffffffffffffff)
+        data = urandom(randrange(64))
 
         aes = AES(key, iv)
         cyphertext = aes.encrypt(data)
@@ -253,10 +253,10 @@ class TestAesCbc(unittest.TestCase):
         self.assertEqual(data, plaintext)
 
     def test_hex_str_random_256_bit(self):
-        key = random.randrange(0xfffffffffffffffffffffffffffffffffffffffffffffffff,
+        key = randrange(0xfffffffffffffffffffffffffffffffffffffffffffffffff,
                                0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
-        iv = random.randrange(0xffffffffffffffffffffffffffffffff)
-        data = os.urandom(random.randrange(64))
+        iv = randrange(0xffffffffffffffffffffffffffffffff)
+        data = urandom(randrange(64))
 
         aes = AES(key, iv)
         cyphertext = aes.encrypt(data)
@@ -266,4 +266,4 @@ class TestAesCbc(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.TestProgram()
+    TestProgram()
